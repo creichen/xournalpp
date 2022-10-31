@@ -134,7 +134,15 @@ auto XournalView::cleanupBufferCache() -> void {
 
 auto XournalView::getCurrentPage() const -> size_t { return currentPage; }
 
-const int scrollKeySize = 30;
+const int scrollKeyDefaultSizeConstant = 30;
+
+static int
+getScrollKeySize(XournalView *view) {
+    if (!view->getControl()->getZoomControl()->isZoomPresentationMode()) {
+	return scrollKeyDefaultSizeConstant;
+    }
+    return 0;
+}
 
 auto XournalView::onKeyPressEvent(GdkEventKey* event) -> bool {
     size_t p = getCurrentPage();
@@ -172,7 +180,7 @@ auto XournalView::onKeyPressEvent(GdkEventKey* event) -> bool {
     if (state & GDK_SHIFT_MASK) {
         GtkAllocation alloc = {0};
         gtk_widget_get_allocation(gtk_widget_get_parent(this->widget), &alloc);
-        int windowHeight = alloc.height - scrollKeySize;
+        int windowHeight = alloc.height - getScrollKeySize(this);
 
         if (event->keyval == GDK_KEY_Page_Down) {
             layout->scrollRelative(0, windowHeight);
@@ -196,7 +204,7 @@ auto XournalView::onKeyPressEvent(GdkEventKey* event) -> bool {
     if (event->keyval == GDK_KEY_space) {
         GtkAllocation alloc = {0};
         gtk_widget_get_allocation(gtk_widget_get_parent(this->widget), &alloc);
-        int windowHeight = alloc.height - scrollKeySize;
+        int windowHeight = alloc.height - getScrollKeySize(this);
 
         layout->scrollRelative(0, windowHeight);
         return true;
@@ -234,7 +242,7 @@ auto XournalView::onKeyPressEvent(GdkEventKey* event) -> bool {
         if (state & GDK_SHIFT_MASK) {
             this->pageRelativeXY(0, -1);
         } else {
-            layout->scrollRelative(0, -scrollKeySize);
+            layout->scrollRelative(0, -getScrollKeySize(this));
         }
         return true;
     }
@@ -249,7 +257,7 @@ auto XournalView::onKeyPressEvent(GdkEventKey* event) -> bool {
         if (state & GDK_SHIFT_MASK) {
             this->pageRelativeXY(0, 1);
         } else {
-            layout->scrollRelative(0, scrollKeySize);
+            layout->scrollRelative(0, getScrollKeySize(this));
         }
         return true;
     }
@@ -261,7 +269,7 @@ auto XournalView::onKeyPressEvent(GdkEventKey* event) -> bool {
             if (control->getSettings()->isPresentationMode()) {
                 control->getScrollHandler()->goToPreviousPage();
             } else {
-                layout->scrollRelative(-scrollKeySize, 0);
+                layout->scrollRelative(-getScrollKeySize(this), 0);
             }
         }
         return true;
@@ -274,7 +282,7 @@ auto XournalView::onKeyPressEvent(GdkEventKey* event) -> bool {
             if (control->getSettings()->isPresentationMode()) {
                 control->getScrollHandler()->goToNextPage();
             } else {
-                layout->scrollRelative(scrollKeySize, 0);
+                layout->scrollRelative(getScrollKeySize(this), 0);
             }
         }
         return true;

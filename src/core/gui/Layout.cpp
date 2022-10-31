@@ -191,6 +191,7 @@ void Layout::layoutPages(int width, int height) {
     if (!pc.valid) {
         recalculate_int();
     }
+
     // Todo: remove, just a hack-hotfix
     scrollHandling->setLayoutSize(std::max(width, strict_cast<int>(this->pc.minWidth)),
                                   std::max(height, strict_cast<int>(this->pc.minHeight)));
@@ -217,9 +218,9 @@ void Layout::layoutPages(int width, int height) {
 
     // add space around the entire page area to accommodate older Wacom tablets with limited sense area.
     auto const v_padding =
-            sumIf(padding, settings->getAddVerticalSpaceAmount(), settings->getAddVerticalSpace());
+	sumIf(padding, settings->getAddVerticalSpaceAmount(), settings->getAddVerticalSpace());
     auto const h_padding =
-            sumIf(padding, settings->getAddHorizontalSpaceAmount(), settings->getAddHorizontalSpace());
+	sumIf(padding, settings->getAddHorizontalSpaceAmount(), settings->getAddHorizontalSpace());
 
     auto const centeringXBorder = (width - as_signed(pc.minWidth)) / 2;
     auto const centeringYBorder = (height - as_signed(pc.minHeight)) / 2;
@@ -385,8 +386,8 @@ void Layout::scrollAbs(double x, double y) {
 
 void Layout::ensureRectIsVisible(int x, int y, int width, int height) {
     int offset = (this->view->getControl()->getSettings()->isPresentationMode()) ? 0 : XOURNAL_PADDING / 2;
-    gtk_adjustment_clamp_page(scrollHandling->getHorizontal(), x - 5, x + width + offset);
-    gtk_adjustment_clamp_page(scrollHandling->getVertical(), y - 5, y + height + offset);
+    gtk_adjustment_clamp_page(scrollHandling->getHorizontal(), x - offset, x + width + 2 * offset);
+    gtk_adjustment_clamp_page(scrollHandling->getVertical(), y - offset, y + height + 2 * offset);
 }
 
 
