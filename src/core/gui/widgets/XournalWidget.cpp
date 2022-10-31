@@ -21,7 +21,7 @@
 #include "util/Color.h"                     // for cairo_set_source_rgbi
 #include "util/Rectangle.h"                 // for Rectangle
 #include "view/SetsquareView.h"             // for SetsquareView
-
+#include "control/zoom/ZoomControl.h"       // for ZoomControl
 
 using xoj::util::Rectangle;
 
@@ -273,7 +273,9 @@ static auto gtk_xournal_draw(GtkWidget* widget, cairo_t* cr) -> gboolean {
             continue;
         }
 
-        gtk_xournal_draw_shadow(xournal, cr, px, py, pw, ph, pv->isSelected());
+        if (!xournal->view->getControl()->getZoomControl()->isZoomPresentationMode()) {
+            gtk_xournal_draw_shadow(xournal, cr, px, py, pw, ph, pv->isSelected());
+        }
 
         cairo_save(cr);
         cairo_translate(cr, px, py);

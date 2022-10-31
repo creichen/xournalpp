@@ -15,6 +15,7 @@
 #include "gui/scroll/ScrollHandling.h"  // for ScrollHandling
 #include "util/Rectangle.h"             // for Rectangle
 #include "util/safe_casts.h"            // for strict_cast, as_signed, as_si...
+#include "control/zoom/ZoomControl.h"   // for ZoomControl
 
 #include "XournalView.h"  // for XournalView
 
@@ -140,6 +141,16 @@ constexpr auto sumIf = [](auto base, auto addend, bool predicate) {
     }
 };
 void Layout::recalculate_int() const {
+    size_t padding = 0;
+    size_t paddingBetween = 0;
+    size_t roomForShadow = 0;
+
+    if (!view->getControl()->getZoomControl()->isZoomPresentationMode()) {
+        padding = XOURNAL_PADDING;
+        paddingBetween = XOURNAL_PADDING_BETWEEN;
+        roomForShadow = XOURNAL_ROOM_FOR_SHADOW;
+    }
+
     auto* settings = view->getControl()->getSettings();
     auto len = view->viewPages.size();
     mapper.configureFromSettings(len, settings);
@@ -159,13 +170,11 @@ void Layout::recalculate_int() const {
     }
 
     // add space around the entire page area to accommodate older Wacom tablets with limited sense area.
-    auto const vPadding =
-            sumIf(XOURNAL_PADDING, settings->getAddVerticalSpaceAmount(), settings->getAddVerticalSpace());
-    auto const hPadding =
-            sumIf(XOURNAL_PADDING, settings->getAddHorizontalSpaceAmount(), settings->getAddHorizontalSpace());
+    size_t const vPadding = sumIf(padding, settings->getAddVerticalSpaceAmount(), settings->getAddVerticalSpace());
+    size_t const hPadding = sumIf(padding, settings->getAddHorizontalSpaceAmount(), settings->getAddHorizontalSpace());
 
-    pc.minWidth = as_unsigned(2 * hPadding + as_signed_strict((pc.widthCols.size() - 1) * XOURNAL_PADDING_BETWEEN));
-    pc.minHeight = as_unsigned(2 * vPadding + as_signed_strict((pc.heightRows.size() - 1) * XOURNAL_PADDING_BETWEEN));
+    pc.minWidth = as_unsigned(2 * hPadding + as_signed_strict(pc.widthCols.size() - 1) * paddingBetween);
+    pc.minHeight = as_unsigned(2 * vPadding + as_signed_strict(pc.heightRows.size() - 1) * paddingBetween);
 
     pc.minWidth = floor_cast<size_t>(std::accumulate(begin(pc.widthCols), end(pc.widthCols), double(pc.minWidth)));
     pc.minHeight = floor_cast<size_t>(std::accumulate(begin(pc.heightRows), end(pc.heightRows), double(pc.minHeight)));
@@ -186,6 +195,16 @@ void Layout::layoutPages(int width, int height) {
     scrollHandling->setLayoutSize(std::max(width, strict_cast<int>(this->pc.minWidth)),
                                   std::max(height, strict_cast<int>(this->pc.minHeight)));
 
+    size_t padding = 0;
+    size_t paddingBetween = 0;
+    size_t roomForShadow = 0;
+
+    if (!view->getControl()->getZoomControl()->isZoomPresentationMode()) {
+        padding = XOURNAL_PADDING;
+        paddingBetween = XOURNAL_PADDING_BETWEEN;
+        roomForShadow = XOURNAL_ROOM_FOR_SHADOW;
+    }
+
     size_t const len = this->view->viewPages.size();
     Settings* settings = this->view->getControl()->getSettings();
 
@@ -198,9 +217,9 @@ void Layout::layoutPages(int width, int height) {
 
     // add space around the entire page area to accommodate older Wacom tablets with limited sense area.
     auto const v_padding =
-            sumIf(XOURNAL_PADDING, settings->getAddVerticalSpaceAmount(), settings->getAddVerticalSpace());
+            sumIf(padding, settings->getAddVerticalSpaceAmount(), settings->getAddVerticalSpace());
     auto const h_padding =
-            sumIf(XOURNAL_PADDING, settings->getAddHorizontalSpaceAmount(), settings->getAddHorizontalSpace());
+            sumIf(padding, settings->getAddHorizontalSpaceAmount(), settings->getAddHorizontalSpace());
 
     auto const centeringXBorder = (width - as_signed(pc.minWidth)) / 2;
     auto const centeringYBorder = (height - as_signed(pc.minHeight)) / 2;
@@ -236,15 +255,15 @@ void Layout::layoutPages(int width, int height) {
                         // pair pages mode
                         if (c % 2 == 0) {
                             // align right
-                            paddingLeft = XOURNAL_PADDING_BETWEEN - XOURNAL_ROOM_FOR_SHADOW + columnPadding;
-                            paddingRight = XOURNAL_ROOM_FOR_SHADOW;
+                            paddingLeft = paddingBetween - roomForShadow + columnPadding;
+                            paddingRight = roomForShadow;
                         } else {  // align left
-                            paddingLeft = XOURNAL_ROOM_FOR_SHADOW;
-                            paddingRight = XOURNAL_PADDING_BETWEEN - XOURNAL_ROOM_FOR_SHADOW + columnPadding;
+                            paddingLeft = roomForShadow;
+                            paddingRight = paddingBetween - roomForShadow + columnPadding;
                         }
                     } else {  // not paired page mode - center
-                        paddingLeft = XOURNAL_PADDING_BETWEEN / 2.0 + columnPadding / 2.0;  // center justify
-                        paddingRight = XOURNAL_PADDING_BETWEEN - paddingLeft + columnPadding / 2.0;
+                        paddingLeft = paddingBetween / 2.0 + columnPadding / 2.0;  // center justify
+                        paddingRight = paddingBetween - paddingLeft + columnPadding / 2.0;
                     }
 
                     x += paddingLeft;
@@ -255,11 +274,11 @@ void Layout::layoutPages(int width, int height) {
                     x += vDisplayWidth + paddingRight;
                 }
             } else {
-                x += this->pc.widthCols[c] + XOURNAL_PADDING_BETWEEN;
+                x += this->pc.widthCols[c] + paddingBetween;
             }
         }
         x = borderX;
-        y += this->pc.heightRows[r] + XOURNAL_PADDING_BETWEEN;
+        y += this->pc.heightRows[r] + paddingBetween;
     }
 
     this->colXStart.resize(this->pc.widthCols.size());
@@ -269,15 +288,15 @@ void Layout::layoutPages(int width, int height) {
     // accumulated - absolute pixel location for use by getViewAt() and updateVisibility()
     auto totalWidth = borderX;
     std::transform(
-            begin(this->pc.widthCols), end(this->pc.widthCols), begin(this->colXStart), [&totalWidth](auto&& widthCol) {
+	begin(this->pc.widthCols), end(this->pc.widthCols), begin(this->colXStart), [&totalWidth,&paddingBetween](auto&& widthCol) {
                 return strict_cast<std::remove_reference_t<decltype(widthCol)>>(totalWidth +=
-                                                                                widthCol + XOURNAL_PADDING_BETWEEN);
+                                                                                widthCol + paddingBetween);
             });
     auto totalHeight = borderY;
     std::transform(begin(this->pc.heightRows), end(this->pc.heightRows), begin(this->rowYStart),
-                   [&totalHeight](auto&& heightRow) {
+                   [&totalHeight,&paddingBetween](auto&& heightRow) {
                        return strict_cast<std::remove_reference_t<decltype(heightRow)>>(
-                               (totalHeight += heightRow + XOURNAL_PADDING_BETWEEN));
+                               (totalHeight += heightRow + paddingBetween));
                    });
 }
 
@@ -285,14 +304,24 @@ void Layout::layoutPages(int width, int height) {
 auto Layout::getPaddingAbovePage(size_t pageIndex) const -> int {
     const Settings* settings = this->view->getControl()->getSettings();
 
+    size_t padding = 0;
+    size_t paddingBetween = 0;
+    size_t roomForShadow = 0;
+
+    if (!view->getControl()->getZoomControl()->isZoomPresentationMode()) {
+        padding = XOURNAL_PADDING;
+        paddingBetween = XOURNAL_PADDING_BETWEEN;
+        roomForShadow = XOURNAL_ROOM_FOR_SHADOW;
+    }
+
     // User-configured padding above all pages.
     auto const paddingAbove =
-            sumIf(XOURNAL_PADDING, settings->getAddVerticalSpaceAmount(), settings->getAddVerticalSpace());
+            sumIf(padding, settings->getAddVerticalSpaceAmount(), settings->getAddVerticalSpace());
 
     // (x, y) coordinate pair gives grid indicies. This handles paired pages
     // and different page layouts for us.
     auto pageYLocation = this->mapper.at(pageIndex).row;
-    return strict_cast<int>(as_signed(pageYLocation) * XOURNAL_PADDING_BETWEEN + as_signed(paddingAbove));
+    return strict_cast<int>(as_signed(pageYLocation) * paddingBetween + as_signed(paddingAbove));
 }
 
 
@@ -300,23 +329,33 @@ auto Layout::getPaddingLeftOfPage(size_t pageIndex) const -> int {
     bool isPairedPages = this->mapper.isPairedPages();
     const Settings* settings = this->view->getControl()->getSettings();
 
+    size_t padding = 0;
+    size_t paddingBetween = 0;
+    size_t roomForShadow = 0;
+
+    if (!view->getControl()->getZoomControl()->isZoomPresentationMode()) {
+        padding = XOURNAL_PADDING;
+        paddingBetween = XOURNAL_PADDING_BETWEEN;
+        roomForShadow = XOURNAL_ROOM_FOR_SHADOW;
+    }
+
     auto paddingBefore =
-            sumIf(XOURNAL_PADDING, settings->getAddHorizontalSpaceAmount(), settings->getAddHorizontalSpace());
+            sumIf(padding, settings->getAddHorizontalSpaceAmount(), settings->getAddHorizontalSpace());
 
     auto const pageXLocation = as_signed(this->mapper.at(pageIndex).col);
 
     // No page pairing or we haven't rendered enough pages in the row for
     // page pairing to have an effect,
     if (!isPairedPages) {
-        return strict_cast<int>(pageXLocation * XOURNAL_PADDING_BETWEEN + XOURNAL_PADDING_BETWEEN / 2 +
+        return strict_cast<int>(pageXLocation * paddingBetween + paddingBetween / 2 +
                                 as_signed(paddingBefore));
     } else {
         auto columnPadding =
-                XOURNAL_PADDING_BETWEEN + strict_cast<int>(pageXLocation / 2) * (XOURNAL_PADDING_BETWEEN * 2);
+                paddingBetween + strict_cast<int>(pageXLocation / 2) * (paddingBetween * 2);
         if (pageXLocation % 2 == 0) {
-            return strict_cast<int>(columnPadding - XOURNAL_ROOM_FOR_SHADOW + paddingBefore);
+            return strict_cast<int>(columnPadding - roomForShadow + paddingBefore);
         } else {
-            return strict_cast<int>(columnPadding + XOURNAL_ROOM_FOR_SHADOW + paddingBefore);
+            return strict_cast<int>(columnPadding + roomForShadow + paddingBefore);
         }
     }
 }
@@ -345,8 +384,9 @@ void Layout::scrollAbs(double x, double y) {
 
 
 void Layout::ensureRectIsVisible(int x, int y, int width, int height) {
-    gtk_adjustment_clamp_page(scrollHandling->getHorizontal(), x - 5, x + width + 10);
-    gtk_adjustment_clamp_page(scrollHandling->getVertical(), y - 5, y + height + 10);
+    int offset = (this->view->getControl()->getSettings()->isPresentationMode()) ? 0 : XOURNAL_PADDING / 2;
+    gtk_adjustment_clamp_page(scrollHandling->getHorizontal(), x - 5, x + width + offset);
+    gtk_adjustment_clamp_page(scrollHandling->getVertical(), y - 5, y + height + offset);
 }
 
 

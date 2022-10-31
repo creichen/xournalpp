@@ -2430,8 +2430,8 @@
             <child>
               <object class="GtkBox" id="searchBar">
                 <property name="name">searchBar</property>
-                <property name="visible">True</property>
-                <property name="can-focus">False</property>
+                <property name="visible">False</property>
+                <property name="can_focus">False</property>
                 <property name="orientation">vertical</property>
                 <child>
                   <object class="GtkSeparator" id="separator1">
